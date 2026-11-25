@@ -1,0 +1,227 @@
+Human GDC Indole RNA-seq Analysis
+
+1. Overview
+
+This directory contains R scripts used to perform differential gene expression analysis, pathway enrichment, quality control, and visualization of human GDC RNA-seq data comparing Indole + LPS treatment to LPS alone.
+
+The analysis includes 20 samples from 10 paired donors, with one sample per treatment condition for each donor. Transcript-level quantifications generated using Salmon are aggregated to the gene level using tximport. Differential expression analysis is performed using DESeq2 while controlling for donor-level variability.
+
+2. Script Descriptions
+
+Salmon_Paired_DESeq2.R
+
+Performs the primary differential gene expression analysis using Salmon quantifications from all 20 samples. Includes transcript-to-gene mapping, quality control, low-count gene filtering, normalization, and paired differential expression analysis using DESeq2.
+
+Quality control assessments include Salmon mapping rates, transcript annotation coverage, library sizes, detected genes, normalized count distributions, PCA, sample correlations, hierarchical clustering, Cook's distance, dispersion estimates, and MA plots.
+
+Outputs include differential expression results, normalized gene counts, sample metadata, quality control figures and tables, volcano plots, heatmaps, and saved DESeq2 objects.
+
+Output directory: `DESeq2_Paired_All20/`
+
+
+compare_results_20_paired.R
+
+Compares differential gene expression results generated using Salmon and DESeq2 against previously generated results provided in the `GDC_RNAseq_fold changes.xlsx` workbook.
+
+Evaluates log2 fold-change correlations, directional agreement, and overlap between significant differentially expressed genes. Generates comparison figures, gene-level comparison tables, and summary statistics for each usable Excel sheet.
+
+Output directory: `Salmon_vs_Excel_Comparison/`
+
+
+Custom_highlight_Volcanos.R
+
+Generates targeted volcano plots highlighting significant DEGs associated with AhR signaling, cytokine and chemokine expression, and immune activation.
+
+Genes are selected using an FDR threshold of 0.05 and ranked by adjusted p-value. Up to 10 upregulated and 10 downregulated genes are selected per biological category.
+
+Output directory: `Targeted_Volcano_Plots/`
+
+
+Hallmark_GSEA_Dual_FDR_Top10_Bars_Top5_Volcano.R
+
+Combines previously generated Hallmark gene set enrichment analysis (GSEA) results with DESeq2 differential expression results to characterize leading-edge genes associated with enriched pathways.
+
+Generates gene-level summary tables, segmented bar plots displaying the top 10 leading-edge genes per pathway, and global and pathway-specific volcano plots. Leading-edge genes are ranked primarily by their DESeq2 adjusted p-values.
+
+Results are generated separately using pathway FDR thresholds of 0.05 and 0.10.
+
+Output directory: `FDR_0.1_Hallmark_GSEA/Dual_FDR_Gene_Annotations/`
+
+
+Hallmark_ORA_Two_Global_Volcanoes_FDR_005_010.R
+
+Performs over-representation analysis (ORA) using MSigDB Hallmark gene sets and significant DEGs.
+
+Enrichment is evaluated separately for all significant, upregulated, and downregulated genes using a one-sided hypergeometric test. Eligible genes from the DESeq2 results are used as the background population.
+
+Generates pathway enrichment tables, enrichment figures, overlapping gene tables, and volcano plots using pathway FDR thresholds of 0.05 and 0.10.
+
+Output directory: `ORA/`
+
+
+Human_GDC_KEGG_GO_GSEA.R
+
+Performs pre-ranked gene set enrichment analysis using DESeq2 Wald statistics and the following gene set collections:
+
+- KEGG Legacy
+- Gene Ontology Biological Process (GO BP)
+- Gene Ontology Cellular Component (GO CC)
+- Gene Ontology Molecular Function (GO MF)
+
+Generates pathway enrichment statistics, leading-edge gene tables, bar plots, and volcano plots using pathway FDR thresholds of 0.05 and 0.10.
+
+This script also contains the Hallmark GSEA visualization workflow.
+
+Output directories:
+
+- `KEGG_GO_GSEA/`
+- `FDR_0.1_Hallmark_GSEA/Dual_FDR_Gene_Annotations/`
+
+
+Human_GDC_IL21_IL1B_IL6_Violin_Corrected.R
+
+Generates violin plots displaying normalized gene expression of IL21, IL1B, and IL6 across treatment groups.
+
+Expression values are log2-transformed with a pseudocount of 1. Figures include embedded boxplots, individual sample points, and lines connecting paired donor samples.
+
+**Output directory:** `Gene_Violin_Plots/`
+
+
+
+3. Required Input Files
+
+File | Description 
+
+`quant.sf` | Salmon transcript-level quantification files for all 20 samples 
+`aux_info/meta_info.json` | Salmon mapping statistics for each sample, used for mapping QC 
+`tx2gene.csv` | Transcript-to-gene annotation mapping containing TXNAME and GENEID columns 
+`DEG_INLPS_vs_LPS_All.csv` | Complete DESeq2 differential expression results 
+`Normalized_Gene_Counts.csv` | DESeq2-normalized gene expression counts 
+`Hallmark_GSEA_All_Results.csv` | Previously generated Hallmark GSEA results 
+`GDC_RNAseq_fold changes.xlsx` | Previously generated differential expression results used for comparison 
+
+The DESeq2 differential expression results and normalized gene counts are generated by the primary analysis script and used as inputs for subsequent downstream analyses.
+
+4. Statistical Methods
+
+Differential Gene Expression
+
+Salmon transcript-level quantifications are imported and aggregated to the gene level using tximport.
+
+Genes are retained if they have at least 10 counts in at least three samples. Differential expression analysis is performed using DESeq2 with the following model:
+
+`~ donor_id + treatment`
+
+LPS alone is used as the reference treatment. Positive log2 fold-change values indicate increased expression in the Indole + LPS treatment group relative to LPS alone.
+
+Statistically significant DEGs are identified using a Benjamini-Hochberg adjusted p-value below 0.05. No additional fold-change threshold is applied when generating the significant DEG tables.
+
+The primary volcano plot highlights genes meeting both of the following criteria:
+
+- FDR < 0.05
+- Absolute log2 fold change > 1
+
+Gene Set Enrichment Analysis
+
+Pre-ranked GSEA for KEGG and GO pathways is performed using signed DESeq2 Wald statistics. Pathway enrichment results are evaluated using FDR thresholds of 0.05 and 0.10.
+
+Leading-edge genes are extracted and merged with DESeq2 differential expression results to characterize individual genes contributing to pathway enrichment.
+
+Over-Representation Analysis
+
+ORA is performed using a one-sided hypergeometric test to identify Hallmark pathways containing more significant DEGs than expected by chance.
+
+Eligible, annotated genes from the DESeq2 results are used as the background population. Enrichment is evaluated separately for all significant, upregulated, and downregulated genes.
+
+Multiple-testing correction is performed using the Benjamini-Hochberg method within each analysis group.
+
+Gene Expression Visualization
+
+Normalized gene expression values used in violin plots are transformed using:
+
+`log2(normalized_count + 1)`
+
+Statistical significance displayed on violin plots is obtained from the paired DESeq2 analysis rather than an independent statistical test.
+
+
+5. Primary Analysis Output
+
+The `DESeq2_Paired_All20/` directory contains the primary differential expression results.
+
+ File | Description |
+
+`Sample_Metadata.csv` | Sample identifiers, donor identifiers, and treatment assignments 
+`Gene_Estimated_Counts.csv` | Gene-level estimated counts generated by tximport 
+`Normalized_Gene_Counts.csv` | DESeq2-normalized gene counts 
+`DEG_INLPS_vs_LPS_All.csv` | Complete differential expression results 
+`DEG_INLPS_vs_LPS_FDR005.csv` | Significant DEGs at FDR < 0.05 
+`Upregulated_INLPS.csv` | Significant upregulated genes 
+`Downregulated_INLPS.csv` | Significant downregulated genes 
+`Volcano_INLPS_vs_LPS.pdf` | Differential expression volcano plot 
+`Top50_DEG_Heatmap.pdf` | Heatmap of up to 50 significant DEGs ranked by adjusted p-value 
+`DESeq2_dds.rds` | Saved DESeq2 dataset object 
+`DESeq2_vst.rds` | Variance-stabilized expression object 
+`R_SessionInfo.txt` | R environment and package version information 
+`QC/` | Quality control figures, tables, and intermediate QC objects 
+
+
+6. Quality Control
+
+Quality control was performed to evaluate sample pairing, Salmon mapping rates, transcript-to-gene annotation coverage, library sizes, detected genes, normalized expression distributions, sample correlations, hierarchical clustering, and principal component analysis. Additional model-level assessments included Cook's distance, dispersion estimates, MA plots, and missing statistical results.
+
+Genes were retained if they had at least 10 counts in at least three samples. All 20 samples were retained for paired differential expression analysis. Quality control figures and summary statistics were generated for manual assessment of sample quality and model performance.
+
+
+7. Software and Dependencies
+
+Software
+
+- R
+- Salmon
+
+CRAN Packages
+
+- BiocManager
+- dplyr
+- tidyr
+- tibble
+- ggplot2
+- ggrepel
+- pheatmap
+- jsonlite
+- readr
+- readxl
+- stringr
+- msigdbr
+
+Bioconductor Packages
+
+- tximport
+- DESeq2
+- AnnotationDbi
+- org.Hs.eg.db
+- fgsea
+
+Most scripts automatically install missing R packages. R and package versions used during the primary differential expression analysis are recorded in `R_SessionInfo.txt`.
+
+8. Running the Analysis
+
+1. Confirm that Salmon quantifications are available for all 20 samples.
+2. Confirm that the transcript-to-gene mapping file corresponds to the reference used for Salmon quantification.
+3. Verify sample identifiers, donor assignments, and treatment conditions.
+4. Modify the directory paths in the primary analysis script to match the current computing environment.
+5. Run `Salmon_Paired_DESeq2.R` to generate differential expression results, normalized counts, and quality control assessments.
+6. Review quality control results before proceeding with downstream analyses.
+7. Update the `base_dir` and input file paths in the downstream scripts.
+8. Run the desired downstream analysis scripts.
+
+Downstream scripts can generally be executed independently once their required input files are available. Scripts containing the Hallmark GSEA visualization workflow also require previously generated Hallmark GSEA results.
+
+9. Additional Notes
+
+- All downstream analyses use differential expression results generated from the complete 20-sample dataset.
+- The KEGG/GO GSEA script includes functionality also present in the standalone Hallmark GSEA visualization script.
+- Both violin plot scripts write results to the same output directory and may overwrite overlapping outputs.
+- Despite its filename, `Human_GDC_IL21_IL1B_IL6_Violin_With_PValues(1).R` currently targets IL23 rather than IL21.
+- Sample metadata discrepancies involving the donor identifier for sample 7 and collection dates for samples 9 and 10 should be verified against the original sample records.
+- Directory paths must be updated when transferring scripts between computing environments.
